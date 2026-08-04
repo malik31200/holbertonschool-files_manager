@@ -18,8 +18,7 @@ class UsersController {
     }
 
     const user = await dbClient
-      .client
-      .db()
+      .db
       .collection('users')
       .findOne({ email });
 
@@ -32,8 +31,7 @@ class UsersController {
     const hashedPassword = sha1(password);
 
     const result = await dbClient
-      .client
-      .db()
+      .db
       .collection('users')
       .insertOne({
         email,
