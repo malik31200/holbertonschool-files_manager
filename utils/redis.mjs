@@ -1,4 +1,3 @@
-import { resolve } from 'node:dns';
 import redis from 'redis';
 
 class RedisClient {
