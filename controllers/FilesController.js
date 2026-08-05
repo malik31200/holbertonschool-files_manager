@@ -102,7 +102,7 @@ class FilesController {
 
     const buffer = Buffer.from(data, 'base64');
 
-    fs.promises.writeFile(localPath, buffer);
+    await fs.promises.writeFile(localPath, buffer);
 
     const result = await dbClient.db
       .collection('files')
@@ -116,7 +116,7 @@ class FilesController {
       });
 
     return res.status(201).json({
-      id: result.insertedId,
+      id: result.insertedId.toString(),
       userId,
       name,
       type,
