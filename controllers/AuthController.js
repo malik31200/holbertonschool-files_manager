@@ -18,6 +18,12 @@ class AuthController {
 
     const [email, password] = decoded.split(':');
 
+    if (!email || !password) {
+        return res.status(401).json({
+            error: 'Unauthorized',
+        });
+    }
+
     const user = await dbClient.db.collection('users').findOne({
       email,
       password: sha1(password),
