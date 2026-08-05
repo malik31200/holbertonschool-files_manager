@@ -43,7 +43,13 @@ class FilesController {
       });
     }
 
-    if (parentId !== '0' && ObjectId.isValid(parentId)) {
+    if (parentId !== '0') {
+      if (!ObjectId.isValid(parentId)) {
+        return res.status(400).json({
+          error: 'Parent not found',
+        });
+      }
+
       const parent = await dbClient.db
         .collection('files')
         .findOne({
@@ -75,7 +81,7 @@ class FilesController {
         });
 
       return res.status(201).json({
-        id: result.insertedId,
+        id: result.insertedId.toString(),
         userId,
         name,
         type,

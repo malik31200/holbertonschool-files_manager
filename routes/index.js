@@ -18,6 +18,6 @@ router.get('/disconnect', AuthController.getDisconnect);
 
 router.get('/users/me', UsersController.getMe);
 
-router.post('/files',  FilesController.postUpload);
+router.post('/files', FilesController.postUpload);
 
 export default router;
