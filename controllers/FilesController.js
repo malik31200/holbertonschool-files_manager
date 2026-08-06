@@ -168,15 +168,21 @@ class FilesController {
   }
 
   static async getIndex(req, res) {
+    console.log('=== GET INDEX START ===');
     const token = req.headers['x-token'];
+    console.log('TOKEN:', token);
+
 
     const userId = await redisClient.get(`auth_${token}`);
+    console.log('USER ID:', userId);
 
     if (!userId) {
+      console.log('NO USER');
       return res.status(401).json({
         error: 'Unauthorized',
       });
     }
+    console.log('QUERY:', req.query);
 
     const {
       parentId = '0',
