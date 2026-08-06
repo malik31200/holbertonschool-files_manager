@@ -189,13 +189,15 @@ class FilesController {
       parentQuery = new ObjectId(parentId);
     }
 
+    const pageNumber = parseInt(page, 10) || 0;
+
     const files = await dbClient.db
       .collection('files')
       .find({
         userId: new ObjectId(userId),
         parentId: parentQuery,
       })
-      .skip(parseInt(page, 10) * 20)
+      .skip(pageNumber * 20)
       .limit(20)
       .toArray();
 
@@ -203,7 +205,7 @@ class FilesController {
       id: file._id.toString(),
       userId: file.userId.toString(),
       name: file.name,
-      type: file.name,
+      type: file.type,
       isPublic: file.isPublic,
       parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
     }));
