@@ -1,108 +1,91 @@
-import { v4 as uuidv4 } from 'uuid';
-import { ObjectId } from 'mongodb';
-import fs from 'fs';
-import path from 'path';
-import dbClient from '../utils/db';
-import redisClient from '../utils/redis';
+static async postUpload(req, res) {
+  console.log('=== POST /files START ===');
 
-class FilesController {
-  static async postUpload(req, res) {
-    const token = req.headers['x-token'];
+  const token = req.headers['x-token'];
+  console.log('TOKEN:', token);
 
-    const userId = await redisClient.get(`auth_${token}`);
+  const userId = await redisClient.get(`auth_${token}`);
+  console.log('USER ID:', userId);
 
-    if (!userId) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-      });
-    }
+  if (!userId) {
+    console.log('ERROR: Unauthorized');
+    return res.status(401).json({
+      error: 'Unauthorized',
+    });
+  }
 
-    const {
-      name,
-      type,
-      parentId = '0',
-      isPublic = false,
-      data,
-    } = req.body;
+  const {
+    name,
+    type,
+    parentId = '0',
+    isPublic = false,
+    data,
+  } = req.body || {};
 
-    if (!name) {
+  console.log('BODY:', {
+    name,
+    type,
+    parentId,
+    isPublic,
+    hasData: !!data,
+  });
+
+  if (!name) {
+    console.log('ERROR: Missing name');
+    return res.status(400).json({
+      error: 'Missing name',
+    });
+  }
+
+  if (!type || !['folder', 'file', 'image'].includes(type)) {
+    console.log('ERROR: Missing type');
+    return res.status(400).json({
+      error: 'Missing type',
+    });
+  }
+
+  if (type !== 'folder' && !data) {
+    console.log('ERROR: Missing data');
+    return res.status(400).json({
+      error: 'Missing data',
+    });
+  }
+
+  if (parentId !== '0') {
+    console.log('CHECKING PARENT');
+
+    if (!ObjectId.isValid(parentId)) {
+      console.log('ERROR: Invalid parentId');
       return res.status(400).json({
-        error: 'Missing name',
+        error: 'Parent not found',
       });
     }
 
-    if (!type || !['folder', 'file', 'image'].includes(type)) {
+    const parent = await dbClient.db
+      .collection('files')
+      .findOne({
+        _id: new ObjectId(parentId),
+      });
+
+    console.log('PARENT:', parent);
+
+    if (!parent) {
+      console.log('ERROR: Parent not found');
       return res.status(400).json({
-        error: 'Missing type',
+        error: 'Parent not found',
       });
     }
 
-    if (type !== 'folder' && !data) {
+    if (parent.type !== 'folder') {
+      console.log('ERROR: Parent is not a folder');
       return res.status(400).json({
-        error: 'Missing data',
+        error: 'Parent is not a folder',
       });
     }
+  }
 
-    if (parentId !== '0') {
-      if (!ObjectId.isValid(parentId)) {
-        return res.status(400).json({
-          error: 'Parent not found',
-        });
-      }
-
-      const parent = await dbClient.db
-        .collection('files')
-        .findOne({
-          _id: new ObjectId(parentId),
-        });
-
-      if (!parent) {
-        return res.status(400).json({
-          error: 'Parent not found',
-        });
-      }
-
-      if (parent.type !== 'folder') {
-        return res.status(400).json({
-          error: 'Parent is not a folder',
-        });
-      }
-    }
-
-    if (type === 'folder') {
-      const result = await dbClient.db
-        .collection('files')
-        .insertOne({
-          userId: new ObjectId(userId),
-          name,
-          type,
-          isPublic,
-          parentId,
-        });
-
-      return res.status(201).json({
-        id: result.insertedId.toString(),
-        userId,
-        name,
-        type,
-        isPublic,
-        parentId,
-      });
-    }
-
-    const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
-
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
-
-    const filename = uuidv4();
-
-    const localPath = path.join(folderPath, filename);
-
-    const buffer = Buffer.from(data, 'base64');
-
-    await fs.promises.writeFile(localPath, buffer);
+  if (type === 'folder') {
+    console.log('CREATING FOLDER');
 
     const result = await dbClient.db
       .collection('files')
@@ -112,8 +95,9 @@ class FilesController {
         type,
         isPublic,
         parentId,
-        localPath,
       });
+
+    console.log('FOLDER CREATED:', result.insertedId.toString());
 
     return res.status(201).json({
       id: result.insertedId.toString(),
@@ -122,9 +106,52 @@ class FilesController {
       type,
       isPublic,
       parentId,
-      localPath,
     });
   }
-}
 
-export default FilesController;
+  console.log('CREATING FILE');
+
+  const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
+  console.log('FOLDER PATH:', folderPath);
+
+  if (!fs.existsSync(folderPath)) {
+    console.log('CREATING DIRECTORY');
+    fs.mkdirSync(folderPath, { recursive: true });
+  }
+
+  const filename = uuidv4();
+  const localPath = path.join(folderPath, filename);
+
+  console.log('LOCAL PATH:', localPath);
+
+  const buffer = Buffer.from(data, 'base64');
+
+  console.log('WRITING FILE');
+  await fs.promises.writeFile(localPath, buffer);
+  console.log('FILE WRITTEN');
+
+  console.log('INSERTING INTO MONGO');
+
+  const result = await dbClient.db
+    .collection('files')
+    .insertOne({
+      userId: new ObjectId(userId),
+      name,
+      type,
+      isPublic,
+      parentId,
+      localPath,
+    });
+
+  console.log('MONGO INSERT OK:', result.insertedId.toString());
+
+  return res.status(201).json({
+    id: result.insertedId.toString(),
+    userId,
+    name,
+    type,
+    isPublic,
+    parentId,
+    localPath,
+  });
+}
