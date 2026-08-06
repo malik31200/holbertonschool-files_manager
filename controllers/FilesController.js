@@ -164,7 +164,7 @@ class FilesController {
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
-      parentId: file.parentId === '0' ? '0' : file.parentId.toString(),
+      parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
     });
   }
 
@@ -207,7 +207,7 @@ class FilesController {
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
-      parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
+      parentId: file.parentId === '0' ? '0' : file.parentId.toString(),
     }));
 
     return res.status(200).json(result);
