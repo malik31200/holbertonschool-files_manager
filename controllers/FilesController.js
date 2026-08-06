@@ -163,7 +163,7 @@ class FilesController {
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
-      parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
+      parentId: file.parentId === '0' ? '0' : file.parentId.toString(),
     });
   }
 
@@ -328,6 +328,22 @@ class FilesController {
       isPublic: false,
       parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
     });
+  }
+
+  static async getFile(req, res) {
+    let file;
+
+    try {
+      file = dbClient.db
+        collection('files')
+        .findOne({
+          _id: new ObjectId(req.params.id),
+        });
+    } catch {
+      return res.status(404).json({
+        error: 'Not found',
+      });
+    }
   }
 }
 
