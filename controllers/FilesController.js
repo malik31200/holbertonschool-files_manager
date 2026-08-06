@@ -177,18 +177,22 @@ class FilesController {
         error: 'Unauthorized',
       });
     }
-    const {
-      parentId = '0',
-      page = 0,
-    } = req.query;
 
-    let parentQuery = '0';
+    const parentId = req.query.parentId || '0';
 
-    if (parentId !== '0') {
+    let parentQuery;
+
+    if (parentId === '0') {
+      parentQuery = 0;
+    } else {
       parentQuery = new ObjectId(parentId);
     }
 
-    const pageNumber = parseInt(page, 10) || 0;
+    let page = parseInt(req.query.page || '0', 10);
+
+    if (Number.isNaN(page) || page < 0) {
+      page = 0;
+    }
 
     const files = await dbClient.db
       .collection('files')
@@ -196,7 +200,7 @@ class FilesController {
         userId: new ObjectId(userId),
         parentId: parentQuery,
       })
-      .skip(pageNumber * 20)
+      .skip(page * 20)
       .limit(20)
       .toArray();
 
@@ -206,7 +210,7 @@ class FilesController {
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
-      parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
+      parentId: file.parentId === 0 ? 0 : file.parentId.toString(),
     }));
 
     return res.status(200).json(result);
