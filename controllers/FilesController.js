@@ -177,10 +177,12 @@ class FilesController {
         error: 'Unauthorized',
       });
     }
-    const {
-      parentId = '0',
-      page = 0,
-    } = req.query;
+
+    let parentId = '0';
+
+    if (req.query.parentId) {
+      parentId = req.query.parentId;
+    }
 
     let parentQuery = '0';
 
@@ -188,7 +190,15 @@ class FilesController {
       parentQuery = new ObjectId(parentId);
     }
 
-    const pageNumber = parseInt(page, 10) || 0;
+    let page = 0;
+
+    if (req.query.page) {
+      page = parseInt(req.query.page, 10);
+
+      if (Number.isNaN(page) || page < 0) {
+        page = 0;
+      }
+    }
 
     const files = await dbClient.db
       .collection('files')
@@ -196,18 +206,22 @@ class FilesController {
         userId: new ObjectId(userId),
         parentId: parentQuery,
       })
-      .skip(pageNumber * 20)
+      .skip(page * 20)
       .limit(20)
       .toArray();
 
-    const result = files.map((file) => ({
-      id: file._id.toString(),
-      userId: file.userId.toString(),
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
-    }));
+    const result = [];
+
+    for (const file of files) {
+      result.push({
+        id: file._id.toString(),
+        userId: file.userId.toString(),
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId === '0' ? 0 : file.parentId.toString(),
+      });
+    }
 
     return res.status(200).json(result);
   }
