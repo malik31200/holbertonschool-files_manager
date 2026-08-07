@@ -3,8 +3,11 @@ import { ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
+import Queue from 'bull';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+
+const fileQueue = new Queue('fileQueue');
 
 class FilesController {
   static async postUpload(req, res) {
@@ -114,6 +117,13 @@ class FilesController {
         parentId,
         localPath,
       });
+
+    if (type === 'image') {
+      await fileQueue.add({
+        userId,
+        fileId: result.insertedId.toString(),
+      });
+    }
 
     return res.status(201).json({
       id: result.insertedId.toString(),
@@ -370,7 +380,15 @@ class FilesController {
       });
     }
 
-    if (!fs.existsSync(file.localPath)) {
+    let readPath = file.localPath;
+
+    const { size } = req.query;
+
+    if (size && ['500', '250', '100'].includes(size)) {
+      readPath = `${file.localPath}_${size}`;
+    }
+
+    if (!fs.existsSync(readPath)) {
       return res.status(404).json({
         error: 'Not found',
       });
@@ -379,7 +397,7 @@ class FilesController {
     let data;
 
     try {
-      data = await fs.promises.readFile(file.localPath);
+      data = await fs.promises.readFile(readPath);
     } catch (err) {
       return res.status(404).json({
         error: 'Not Found',
